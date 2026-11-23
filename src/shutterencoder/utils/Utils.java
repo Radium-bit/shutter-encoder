@@ -101,7 +101,6 @@ import shutterencoder.library.Ytdlp;
 import shutterencoder.ui.main.SetAudio;
 import shutterencoder.ui.main.Main;
 import shutterencoder.ui.main.UIController;
-import shutterencoder.ui.others.Donate;
 import shutterencoder.ui.others.Equalizer;
 import shutterencoder.ui.others.Functions;
 import shutterencoder.ui.others.SceneDetection;
@@ -2910,17 +2909,6 @@ public class Utils extends Main {
 			VideoPlayerUtils.waveform = null;
 		}
 		
-		//Check donate account
-		if (showDonateWindow)
-		{
-			if (Donate.textMailDonate.getText().isEmpty() == false)
-			{
-				Donate.checkMailAddress(false, true);
-			}
-			else
-				new Donate();
-		}
-		else
-			System.exit(0);	
+		System.exit(0);	
 	}
 }

@@ -44,8 +44,12 @@ import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
 import java.awt.event.WindowStateListener;
 import java.awt.geom.Area;
+import java.io.BufferedReader;
 import java.io.File;
+import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.net.URL;
+import java.nio.charset.StandardCharsets;
 import java.text.DecimalFormat;
 import java.text.NumberFormat;
 import java.util.ArrayList;
@@ -92,7 +96,6 @@ import shutterencoder.ui.handlers.HardwareListener;
 import shutterencoder.ui.others.Functions;
 import shutterencoder.ui.others.ReducedWindow;
 import shutterencoder.ui.others.Settings;
-import shutterencoder.ui.others.Update;
 import shutterencoder.ui.renderers.AntiAliasedRoundRectangle;
 import shutterencoder.ui.renderers.SplashRenderer;
 import shutterencoder.ui.videoplayer.VideoPlayerUI;
@@ -104,7 +107,55 @@ public class Main {
 	/*
 	 * Initialisation
 	 */
-	public static String actualVersion = "20.5";
+	
+	/**
+	 * 上游官方版本号，仅表示兼容的 Shutter Encoder 基线版本。
+	 * 本项目构建产物在此基础上追加 noPrompt 后缀与构建提交号。
+	 */
+	public static final String baseVersion = "20.5";
+	
+	/**
+	 * 实际显示与对外报告的版本号。
+	 * 由 {@link #buildVersion(String, String)} 依据构建期提交号生成；
+	 * 未注入构建信息时退化为 {@code 20.5-noPrompt}。
+	 */
+	public static final String actualVersion = buildVersion(baseVersion, readBuildRevision());
+	
+	/**
+	 * 读取构建期写入的提交号。
+	 * 构建脚本把提交号写入 jar 根路径的 build-revision.txt，
+	 * 源码直跑或未注入该文件时返回 null。
+	 * @return 完整 git 提交号；不可用时返回 null
+	 */
+	private static String readBuildRevision() {
+		try (InputStream in = Main.class.getClassLoader().getResourceAsStream("build-revision.txt")) {
+			if (in == null)
+				return null;
+			
+			BufferedReader reader = new BufferedReader(new InputStreamReader(in, StandardCharsets.UTF_8));
+			String revision = reader.readLine();
+			if (revision == null)
+				return null;
+			
+			revision = revision.trim();
+			return revision.isEmpty() ? null : revision;
+		} catch (Exception e) {
+			return null;
+		}
+	}
+	
+	/**
+	 * 组合对外版本号，形如 {@code 20.5-noPrompt-a1b2c3d}。
+	 * 保留上游基线版本前缀以便与官方发布做版本比较，后缀标识本分支构建。
+	 * @param base 上游基线版本号
+	 * @param revision 构建提交号；为 null 时省略后缀
+	 * @return 展示用版本号
+	 */
+	private static String buildVersion(String base, String revision) {
+		String suffix = (revision == null || revision.isEmpty()) ? "" : "-" + revision;
+		return base + "-noPrompt" + suffix;
+	}
+	
 	public static String getLanguage = "";
 	public static String arch = "x86_64";
 	public static long availableMemory;
@@ -123,7 +174,6 @@ public class Main {
 	public static JFrame frame = new JFrame();
 	public static int minHeight = 731;
 	public static int extendedWidth = 1350;
-	public static boolean showDonateWindow = false;
 	public static int taskBarHeight;
 	public static boolean cancelled = false;
 	public static float ratioFinal = 0; // CropVideo
@@ -1347,9 +1397,6 @@ public class Main {
 			t.start();
 		}
 
-		if (Settings.btnDisableUpdate.isSelected() == false)
-			Update.newVersion();
-		
 		frame.addWindowListener(new WindowAdapter() {
 
 			@Override

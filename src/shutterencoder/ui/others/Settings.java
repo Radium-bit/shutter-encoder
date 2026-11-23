@@ -52,7 +52,6 @@ import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.Arrays;
-import java.util.Calendar;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Locale;
@@ -137,7 +136,6 @@ public class Settings {
 	public static JComboBox<String> comboAction = new JComboBox<String>();
 	public static JCheckBox btnDisableAnimations = new JCheckBox(Main.language.getProperty("btnDisableAnimations"));
 	public static JCheckBox btnDisableSound = new JCheckBox(Main.language.getProperty("btnDisableSound"));
-	public static JCheckBox btnDisableUpdate = new JCheckBox(Main.language.getProperty("btnDisableUpdate"));
 	public static JCheckBox btnDisableVideoPlayer = new JCheckBox(Main.language.getProperty("btnDisableVideoPlayer"));	
 	public static JCheckBox btnDisableMinimizedWindow = new JCheckBox(Main.language.getProperty("btnDisableMinimizedWindow"));	
 	public static JCheckBox btnPreventSleepMode = new JCheckBox(Main.language.getProperty("btnPreventSleepMode"));
@@ -155,7 +153,6 @@ public class Settings {
 	public static JLabel lblDestination3 = new JLabel(); 
 	public static boolean videoWebCaseMetadata = false;
 	public static boolean videoWebCaseSubtitles = false;
-	public static Integer savedDayOfYear = 0;
 	public static boolean modelIsSaving;
 	
 	private static int MousePositionX;
@@ -174,7 +171,6 @@ public class Settings {
 		btnSetBab.setName("btnSetBab");
 		btnDisableAnimations.setName("btnDisableAnimations");
 		btnDisableSound.setName("btnDisableSound");	
-		btnDisableUpdate.setName("btnDisableUpdate");
 		btnDisableVideoPlayer.setName("btnDisableVideoPlayer");
 		btnDisableMinimizedWindow.setName("btnDisableMinimizedWindow");
 		btnPreventSleepMode.setName("btnPreventSleepMode");
@@ -398,12 +394,8 @@ public class Settings {
 		btnDisableSound.setBounds(12, btnDisableAnimations.getLocation().y + btnDisableAnimations.getHeight() + 10, btnDisableSound.getPreferredSize().width, 16);
 		frame.getContentPane().add(btnDisableSound);
 
-		btnDisableUpdate.setFont(new Font(Main.mainFont, Font.PLAIN, 12));
-		btnDisableUpdate.setBounds(12, btnDisableSound.getLocation().y + btnDisableSound.getHeight() + 10, btnDisableUpdate.getPreferredSize().width, 16);
-		frame.getContentPane().add(btnDisableUpdate);
-		
 		btnDisableVideoPlayer.setFont(new Font(Main.mainFont, Font.PLAIN, 12));
-		btnDisableVideoPlayer.setBounds(12, btnDisableUpdate.getLocation().y + btnDisableUpdate.getHeight() + 10, btnDisableVideoPlayer.getPreferredSize().width, 16);
+		btnDisableVideoPlayer.setBounds(12, btnDisableSound.getLocation().y + btnDisableSound.getHeight() + 10, btnDisableVideoPlayer.getPreferredSize().width, 16);
 		frame.getContentPane().add(btnDisableVideoPlayer);
 		
 		btnDisableVideoPlayer.addActionListener(new ActionListener() {
@@ -1113,58 +1105,6 @@ public class Settings {
 		
 		});
 		
-		JButton donate;		
-		if (Main.getLanguage.equals(Locale.of("fr").getDisplayLanguage()))
-			donate = new JButton("Faire un don");
-		else
-			donate = new JButton("Donate");
-		
-		donate.setName("donate");
-		donate.setFont(new Font(Main.boldFont, Font.PLAIN, 12));
-		donate.setSize(donate.getPreferredSize().width, donate.getPreferredSize().height);
-		donate.setLocation(backgroundPanel.getWidth() / 2 + 14, backgroundPanel.getHeight() / 2 - donate.getHeight() / 2);
-		backgroundPanel.add(donate);
-
-		donate.addMouseListener(new MouseListener() {
-
-			@Override
-			public void mouseClicked(MouseEvent arg0) {
-				
-				try {
-					
-					if (Main.getLanguage.equals(Locale.of("fr").getDisplayLanguage())
-					|| Main.getLanguage.equals(Locale.of("it").getDisplayLanguage())
-					|| Main.getLanguage.equals(Locale.of("es").getDisplayLanguage()))
-					{
-						Desktop.getDesktop().browse(new URI("https://www.paypal.com/donate/?cmd=_donations&business=paulpacifico974@gmail.com&item_name=Shutter+Encoder&currency_code=EUR"));
-					}
-					else
-						Desktop.getDesktop().browse(new URI("https://www.paypal.com/donate/?cmd=_donations&business=paulpacifico974@gmail.com&item_name=Shutter+Encoder&currency_code=USD"));
-						
-				
-				} catch (IOException | URISyntaxException e) {}
-			}
-
-			@Override
-			public void mouseEntered(MouseEvent arg0) {
-				frame.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
-			}
-
-			@Override
-			public void mouseExited(MouseEvent arg0) {
-				frame.setCursor(Cursor.getPredefinedCursor(Cursor.DEFAULT_CURSOR));
-			}
-
-			@Override
-			public void mousePressed(MouseEvent arg0) {
-			}
-
-			@Override
-			public void mouseReleased(MouseEvent arg0) {
-			}
-			
-		});
-					
 		frame.addMouseWheelListener(new MouseWheelListener(){
 
 			@Override
@@ -1746,17 +1686,6 @@ public class Settings {
 						else if (eElement.getElementsByTagName("Name").item(0).getFirstChild().getTextContent().equals("conformKeyframesIsDisplayed"))
 						{											
 							Main.conformKeyframesIsDisplayed = true;
-						}
-						
-						if (eElement.getElementsByTagName("Name").item(0).getFirstChild().getTextContent().equals("dayOfYear"))
-						{
-							savedDayOfYear = Integer.parseInt(eElement.getElementsByTagName("Value").item(0).getFirstChild().getTextContent());
-						}
-						
-						//Donate account
-						if (eElement.getElementsByTagName("Name").item(0).getFirstChild().getTextContent().equals("textMailDonate"))
-						{
-							Donate.textMailDonate.setText(eElement.getElementsByTagName("Value").item(0).getFirstChild().getTextContent());
 						}
 						
 						if (eElement.getElementsByTagName("Name").item(0).getFirstChild().getTextContent().equals("frameLocation"))
@@ -2651,70 +2580,7 @@ public class Settings {
 				warning.appendChild(component);				
 			}
 					
-			Calendar calendar = Calendar.getInstance();
-			int currentDayOfYear = calendar.get(Calendar.DAY_OF_YEAR);  
-			
-			//Launch count
-			component = document.createElement("Component");
-			
-			//Type
-			cType = document.createElement("Type");
-			cType.appendChild(document.createTextNode("String"));
-			component.appendChild(cType);
-					
-			//Name
-			cName = document.createElement("Name");
-			cName.appendChild(document.createTextNode("dayOfYear"));
-			component.appendChild(cName);
-			
-			if (savedDayOfYear == 0 || currentDayOfYear - savedDayOfYear < 0 || currentDayOfYear - savedDayOfYear >= 1)
-			{
-				//Value
-				cValue = document.createElement("Value");
-				cValue.appendChild(document.createTextNode(String.valueOf(currentDayOfYear)));
-				component.appendChild(cValue);
-				
-				Main.showDonateWindow = true;
-			}
-			else
-			{
-				
-				//Value
-				cValue = document.createElement("Value");
-				cValue.appendChild(document.createTextNode(String.valueOf(savedDayOfYear)));
-				component.appendChild(cValue);
-			}
-			
-			warning.appendChild(component);
-			
 			root.appendChild(warning);
-			
-			//Saving donate account	
-			Element account = document.createElement("Account");
-						
-			if (Donate.textMailDonate.getText().isEmpty() == false)
-			{											
-				component = document.createElement("Component");
-				
-				//Type
-				cType = document.createElement("Type");
-				cType.appendChild(document.createTextNode("JTextField"));
-				component.appendChild(cType);
-
-				//Name
-				cName = document.createElement("Name");
-				cName.appendChild(document.createTextNode("textMailDonate"));
-				component.appendChild(cName);
-				
-				//Value
-				cValue = document.createElement("Value");
-				cValue.appendChild(document.createTextNode(Donate.textMailDonate.getText()));
-				component.appendChild(cValue);
-
-				account.appendChild(component);
-				
-				root.appendChild(account);
-			}		
 						
 			if (Utils.getLanguage.equals(comboLanguage.getSelectedItem().toString()))
 			{			

@@ -1,0 +1,5 @@
+# 这些文件依赖 UTF-8 BOM 才能被 Windows 工具正确解析为 UTF-8：
+# PowerShell 5.1 按 ANSI 读取无 BOM 的 .ps1，NSIS 按 ACP 读取无 BOM 的 .nsi，
+# 中文注释会导致解析失败。禁止改动其行尾，避免 BOM 与换行被重写。
+*.ps1 -text
+*.nsi -text

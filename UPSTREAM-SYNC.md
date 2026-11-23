@@ -9,6 +9,8 @@
 | `master` | 上游镜像，只做快进，不提交本地改动 |
 | `no-prompt` | 交付分支，承载本项目全部补丁 |
 
+`master` 上永远不要提交任何东西。它的唯一合法更新方式是 `git merge --ff-only origin/master`。一旦在 `master` 上留下本地提交，`no-prompt` 变基时会把那些提交一并带进来，上游镜像就失去「可随时对照官方」的意义了。
+
 ---
 
 ## 一、补丁清单
@@ -102,6 +104,26 @@ powershell -ExecutionPolicy Bypass -File ./build-noPrompt.ps1
 "C:\Program Files\Shutter Encoder\Shutter Encoder.exe" --version
 #    应输出 v<baseVersion>-noPrompt-<当前提交号>
 ```
+
+### 变基后必须核对的三点
+
+演练验证过：变基成功不代表结果正确，三件事都要亲眼确认。
+
+```bash
+# 1. 上游的新版本号是否真的落到了 baseVersion
+grep -n 'baseVersion = ' src/shutterencoder/ui/main/Main.java
+
+# 2. 上游的新功能是否保留（用该次上游提交里的新增标识符替换）
+grep -rn '上游新增的字段或方法名' src/shutterencoder/
+
+# 3. 弹窗是否仍处于移除状态
+ls src/shutterencoder/ui/others/Donate.java   # 应报「不存在」
+
+# 4. 审计与编译
+powershell -ExecutionPolicy Bypass -File ./audit-noPrompt.ps1 -Strict
+```
+
+第 1 点尤其容易出错：变基时不冲突，可能意味着上游那行改动被我们的写法整段替换掉了，版本号会悄悄停在旧值。`baseVersion` 必须等于上游最新的 `actualVersion`。
 
 ---
 

@@ -1,19 +1,21 @@
 ﻿<#
 .SYNOPSIS
-    启动 Shutter Encoder（仓库版）。
+    Launch Shutter Encoder from this repository.
 .DESCRIPTION
-    自动选择 Java 21 或更高版本运行仓库中的 Shutter Encoder.jar。
-    指定 -Build 时，先从 src\shutterencoder 编译到 build\classes，再以源码构建结果启动。
+    Selects Java 21 or newer automatically and runs the repository's Shutter Encoder.jar.
+    With -Build, compiles src\shutterencoder into build\classes first and launches the
+    result instead.
 .PARAMETER Build
-    从源码编译后启动。编译产物放在 build\classes，运行所需的 Library 与 LUTs 以目录联接方式复用仓库根目录。
+    Compile before launching. Output goes to build\classes; Library and LUTs are reused
+    from the repository root through directory junctions.
 .PARAMETER JavaExe
-    指定 java.exe 的完整路径；未指定时自动探测。
+    Full path to java.exe. Probed automatically when omitted.
 .EXAMPLE
     .\Start-ShutterEncoder.ps1
-    使用官方 Shutter Encoder.jar 启动。
+    Launch using the official Shutter Encoder.jar.
 .EXAMPLE
     .\Start-ShutterEncoder.ps1 -Build
-    编译 src\shutterencoder 后启动。
+    Compile src\shutterencoder and launch the result.
 #>
 [CmdletBinding()]
 param(
@@ -29,11 +31,11 @@ Set-Location $repoRoot
 
 <#
 .SYNOPSIS
-    读取指定 java.exe 的主版本号。
+    Read the major version of the given java.exe.
 .PARAMETER Exe
-    java.exe 的完整路径。
+    Full path to java.exe.
 .OUTPUTS
-    主版本号；无法识别时返回 0。
+    Major version, or 0 when it cannot be determined.
 #>
 function Get-JavaMajorVersion {
     param([string]$Exe)
@@ -60,7 +62,8 @@ function Get-JavaMajorVersion {
     }
 }
 
-# 收集候选 java.exe。优先使用 Shutter Encoder 安装版运行时，因为它自带 FreeSans 与 Montserrat 字体。
+# Collect candidate java.exe files. The installed Shutter Encoder runtime is
+# preferred because it ships the FreeSans and Montserrat fonts.
 $runtimePath = 'C:\Program Files\Shutter Encoder\runtime\bin\java.exe'
 $candidates = New-Object System.Collections.Generic.List[string]
 if ($JavaExe) { $candidates.Add($JavaExe) }
@@ -92,12 +95,13 @@ foreach ($candidate in $candidates) {
     }
 }
 
-# 运行用 Java：显式指定优先；否则优先安装版运行时；最后取最高版本。
+# Java used to run: an explicit choice wins, then the installed runtime, then the
+# highest available major version.
 if ($JavaExe -or $env:JAVA_EXE) {
     $explicitJava = if ($JavaExe) { $JavaExe } else { $env:JAVA_EXE }
     $java = $found | Where-Object { $_.Path -eq $explicitJava } | Select-Object -First 1
     if (-not $java) {
-        Write-Host '指定的 java.exe 不存在或低于 Java 21。' -ForegroundColor Red
+        Write-Host 'The specified java.exe does not exist or is older than Java 21.' -ForegroundColor Red
         exit 1
     }
 } else {
@@ -108,32 +112,32 @@ if ($JavaExe -or $env:JAVA_EXE) {
 }
 
 if (-not $java) {
-    Write-Host '未找到可用的 Java 21 或更高版本。' -ForegroundColor Red
-    Write-Host '请安装 Java 21+，或设置 JAVA_HOME / JAVA_EXE，或使用 -JavaExe 指定 java.exe。'
+    Write-Host 'No usable Java 21 or newer found.' -ForegroundColor Red
+    Write-Host 'Install Java 21+, set JAVA_HOME or JAVA_EXE, or pass -JavaExe with a java.exe path.'
     exit 1
 }
 
-# 编译用 JDK：必须带 javac，优先版本最高的完整 JDK。
+# JDK used for compilation: must include javac, highest complete JDK preferred.
 $jdk = $found | Where-Object {
     Test-Path (Join-Path (Split-Path $_.Path) 'javac.exe')
 } | Sort-Object Major -Descending | Select-Object -First 1
 
 if ($Build -and -not $jdk) {
-    Write-Host '未找到可用的 Java 21 或更高版本 JDK（需要 javac）。' -ForegroundColor Red
-    Write-Host '请安装 JDK 21+，或设置 JAVA_HOME / JAVA_EXE，或使用 -JavaExe 指定 java.exe。'
+    Write-Host 'No usable JDK 21 or newer found (javac required).' -ForegroundColor Red
+    Write-Host 'Install JDK 21+, set JAVA_HOME or JAVA_EXE, or pass -JavaExe with a java.exe path.'
     exit 1
 }
 
-Write-Host ("使用 Java {0}: {1}" -f $java.Major, $java.Path)
+Write-Host ("Using Java {0}: {1}" -f $java.Major, $java.Path)
 if ($Build) {
-    Write-Host ("编译 JDK: {0}" -f $jdk.Path)
+    Write-Host ("Compile JDK: {0}" -f $jdk.Path)
 }
-Write-Host ("仓库根目录: {0}" -f $repoRoot)
+Write-Host ("Repository root: {0}" -f $repoRoot)
 
 $libraryDir = Join-Path $repoRoot 'Library'
 if (-not (Test-Path (Join-Path $libraryDir 'ffmpeg.exe'))) {
-    Write-Host '警告: Library\ffmpeg.exe 不存在，转码与媒体分析功能将无法使用。' -ForegroundColor Yellow
-    Write-Host '可从已安装的 Shutter Encoder 的 app\Library 目录复制运行库。'
+    Write-Host 'Warning: Library\ffmpeg.exe is missing; transcoding and media analysis will not work.' -ForegroundColor Yellow
+    Write-Host 'Copy the runtime libraries from the app\Library directory of an installed Shutter Encoder.'
 }
 
 if ($Build) {
@@ -141,7 +145,7 @@ if ($Build) {
     $classesDir = Join-Path $buildRoot 'classes'
     $javac = Join-Path (Split-Path $jdk.Path) 'javac.exe'
 
-    Write-Host '正在编译源码...'
+    Write-Host 'Compiling sources...'
     if (Test-Path $classesDir) {
         Remove-Item $classesDir -Recurse -Force
     }
@@ -150,7 +154,7 @@ if ($Build) {
     $sources = @(Get-ChildItem (Join-Path $repoRoot 'src\shutterencoder') -Recurse -Filter *.java |
         ForEach-Object { $_.FullName })
     if ($sources.Count -eq 0) {
-        Write-Host '未找到 src\shutterencoder 下的 Java 源文件。' -ForegroundColor Red
+        Write-Host 'No Java sources found under src\shutterencoder.' -ForegroundColor Red
         exit 1
     }
 
@@ -162,7 +166,7 @@ if ($Build) {
     $javacArgs += @('-cp', $libs, '-d', $classesDir) + $sources
     & $javac @javacArgs
     if ($LASTEXITCODE -ne 0) {
-        Write-Host '编译失败，已停止启动。' -ForegroundColor Red
+        Write-Host 'Compilation failed; launch aborted.' -ForegroundColor Red
         exit $LASTEXITCODE
     }
 
@@ -180,16 +184,16 @@ if ($Build) {
     }
 
     $classpath = "$classesDir;$libs"
-    Write-Host '编译完成，正在启动...'
+    Write-Host 'Compilation complete, launching...'
     & $java.Path '-Xmx4G' -cp $classpath shutterencoder.ui.main.Main @AppArgs
 } else {
     $jar = Join-Path $repoRoot 'Shutter Encoder.jar'
     if (-not (Test-Path $jar)) {
-        Write-Host '未找到 Shutter Encoder.jar。' -ForegroundColor Red
+        Write-Host 'Shutter Encoder.jar not found.' -ForegroundColor Red
         exit 1
     }
 
-    Write-Host '正在启动...'
+    Write-Host 'Launching...'
     & $java.Path '-Xmx4G' -jar $jar @AppArgs
 }
 

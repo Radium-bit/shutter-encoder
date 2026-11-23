@@ -1,18 +1,19 @@
 ﻿<#
 .SYNOPSIS
-    构建 Shutter Encoder noPrompt 版 Windows 安装包。
+    Build the Shutter Encoder noPrompt Windows installer.
 .DESCRIPTION
-    按当前工作树源码编译，打包 fat jar，用 jpackage 生成 Windows 应用镜像
-    （含启动器 exe 与精简 Java 运行时），再用 NSIS 生成安装包。
-    中间产物放在 build\noPrompt，交付物放在 build\dist。
+    Compiles the current working tree, packages a fat jar, generates a Windows
+    app image with jpackage (launcher exe plus trimmed Java runtime), then builds
+    the installer with NSIS.
+    Intermediate output goes to build\noPrompt; deliverables go to build\dist.
 .PARAMETER SkipInstaller
-    只生成应用镜像，不调用 NSIS 生成安装包。
+    Generate the app image only, without invoking NSIS.
 .EXAMPLE
     .\build-noPrompt.ps1
-    完整构建并生成安装包。
+    Full build including the installer.
 .EXAMPLE
     .\build-noPrompt.ps1 -SkipInstaller
-    只生成可直接运行的应用镜像。
+    Generate only the runnable app image.
 #>
 [CmdletBinding()]
 param(
@@ -23,7 +24,7 @@ $ErrorActionPreference = 'Stop'
 $repoRoot = $PSScriptRoot
 Set-Location $repoRoot
 
-# 工具路径，可用环境变量覆盖以适配其他构建机
+# Tool paths. Override with environment variables on other build machines.
 $jdkHome = if ($env:SE_JDK_HOME) { $env:SE_JDK_HOME } else { Join-Path $env:USERPROFILE '.jdks\azul-25.38.109' }
 $nsisExe = if ($env:SE_MAKENSIS) { $env:SE_MAKENSIS } else { 'C:\Program Files (x86)\NSIS\makensis.exe' }
 
@@ -36,17 +37,17 @@ $imageDir = Join-Path $workDir 'image'
 
 <#
 .SYNOPSIS
-    校验构建依赖是否存在，缺失时输出提示并终止。
+    Verify a build dependency exists, print guidance and stop when missing.
 .PARAMETER Path
-    工具或文件的完整路径。
+    Full path of the tool or file.
 .PARAMETER Hint
-    缺失时的处理提示。
+    Guidance shown when the dependency is missing.
 #>
 function Assert-Tool {
     param([string]$Path, [string]$Hint)
 
     if (-not (Test-Path $Path)) {
-        Write-Host ("缺少构建依赖: {0}" -f $Path) -ForegroundColor Red
+        Write-Host ("Missing build dependency: {0}" -f $Path) -ForegroundColor Red
         Write-Host $Hint
         exit 1
     }
@@ -54,9 +55,9 @@ function Assert-Tool {
 
 <#
 .SYNOPSIS
-    读取当前提交号，用于版本后缀与安装包标识。
+    Read the current commit hash used for the version suffix and installer identity.
 .OUTPUTS
-    短提交号；工作树不在 git 仓库时返回空字符串。
+    Short commit hash, or an empty string when the tree is not a git repository.
 #>
 function Get-Revision {
     $rev = & git rev-parse --short HEAD 2>$null
@@ -66,9 +67,9 @@ function Get-Revision {
 
 <#
 .SYNOPSIS
-    清空指定目录后重建为空目录。
+    Clear a directory and recreate it empty.
 .PARAMETER Path
-    目标目录路径。
+    Target directory path.
 #>
 function Reset-Directory {
     param([string]$Path)
@@ -81,45 +82,47 @@ $javac = Join-Path $jdkHome 'bin\javac.exe'
 $jarTool = Join-Path $jdkHome 'bin\jar.exe'
 $jpackage = Join-Path $jdkHome 'bin\jpackage.exe'
 
-Assert-Tool $javac '请安装 JDK 21 或更高版本，或用环境变量 SE_JDK_HOME 指向 JDK 根目录。'
-Assert-Tool $jarTool '请安装 JDK 21 或更高版本，或用环境变量 SE_JDK_HOME 指向 JDK 根目录。'
-Assert-Tool $jpackage '请安装 JDK 21 或更高版本，或用环境变量 SE_JDK_HOME 指向 JDK 根目录。'
+$jdkHint = 'Install JDK 21 or newer, or point SE_JDK_HOME at a JDK root.'
+Assert-Tool $javac $jdkHint
+Assert-Tool $jarTool $jdkHint
+Assert-Tool $jpackage $jdkHint
 if (-not $SkipInstaller) {
-    Assert-Tool $nsisExe '请安装 NSIS 3.x，或用环境变量 SE_MAKENSIS 指向 makensis.exe。'
+    Assert-Tool $nsisExe 'Install NSIS 3.x, or point SE_MAKENSIS at makensis.exe.'
 }
 
 $revision = Get-Revision
-Write-Host ("构建提交: {0}" -f $(if ($revision) { $revision } else { '(未取得，版本后缀将省略)' }))
+Write-Host ("Build commit: {0}" -f $(if ($revision) { $revision } else { '(unavailable, version suffix omitted)' }))
 if (-not $revision) {
-    Write-Host '警告: 未取得 git 提交号。' -ForegroundColor Yellow
+    Write-Host 'Warning: no git commit hash available.' -ForegroundColor Yellow
 }
 
 New-Item -ItemType Directory -Path $distDir -Force | Out-Null
 New-Item -ItemType Directory -Path $workDir -Force | Out-Null
 
-# 1. 编译源码
-Write-Host '正在编译源码...'
+# 1. Compile sources
+Write-Host 'Compiling sources...'
 Reset-Directory $classesDir
 $sources = @(Get-ChildItem (Join-Path $repoRoot 'src\shutterencoder') -Recurse -Filter *.java |
     ForEach-Object { $_.FullName })
 if ($sources.Count -eq 0) {
-    Write-Host '未找到 src\shutterencoder 下的 Java 源文件。' -ForegroundColor Red
+    Write-Host 'No Java sources found under src\shutterencoder.' -ForegroundColor Red
     exit 1
 }
 
 & $javac -encoding UTF-8 -nowarn -cp (Join-Path $repoRoot 'src\libs\*') -d $classesDir $sources
 if ($LASTEXITCODE -ne 0) {
-    Write-Host '源码编译失败。' -ForegroundColor Red
+    Write-Host 'Source compilation failed.' -ForegroundColor Red
     exit $LASTEXITCODE
 }
 
-# 2. 组装 jar 内容：编译产物 + 类路径资源 + 依赖库
-Write-Host '正在组装 jar 内容...'
+# 2. Assemble jar content: compiled classes, classpath resources, dependencies
+Write-Host 'Assembling jar content...'
 Reset-Directory $stageDir
 Copy-Item (Join-Path $classesDir '*') $stageDir -Recurse -Force
 Copy-Item (Join-Path $repoRoot 'src\resources') $stageDir -Recurse -Force
 
-# 依赖 jar 逐个解包到独立目录再合并，避免污染仓库工作区
+# Expand each dependency jar into its own directory before merging, so the
+# repository working tree is never touched.
 $libWorkDir = Join-Path $workDir 'libs-expand'
 Reset-Directory $libWorkDir
 $libIndex = 0
@@ -131,7 +134,7 @@ foreach ($lib in Get-ChildItem (Join-Path $repoRoot 'src\libs') -Filter *.jar) {
     try {
         & $jarTool --extract --file $lib.FullName
         if ($LASTEXITCODE -ne 0) {
-            Write-Host ("依赖解包失败: {0}" -f $lib.Name) -ForegroundColor Red
+            Write-Host ("Dependency extraction failed: {0}" -f $lib.Name) -ForegroundColor Red
             exit $LASTEXITCODE
         }
     } finally {
@@ -140,31 +143,34 @@ foreach ($lib in Get-ChildItem (Join-Path $repoRoot 'src\libs') -Filter *.jar) {
     Copy-Item (Join-Path $expanded '*') $stageDir -Recurse -Force
 }
 
-# 写入构建提交号，供程序启动时拼接版本号。
-# 程序按 UTF-8 读取，此处用 .NET 显式写入无 BOM 的 UTF-8，避免首行出现不可见前缀。
+# Write the build commit hash so the application can compose its version string.
+# The application reads UTF-8, so write BOM-less UTF-8 explicitly to keep the
+# first line free of an invisible prefix.
 [System.IO.File]::WriteAllText((Join-Path $stageDir 'build-revision.txt'), $revision, (New-Object System.Text.UTF8Encoding($false)))
 
-# 依赖 jar 自带的模块描述符在合并后互相冲突，且本程序以类路径方式启动，不需要模块化。
-# 与官方 fat jar 的处理一致，把这些描述符改名保留，避免 jar 工具按模块校验。
+# Module descriptors shipped by dependency jars collide once merged, and this
+# application launches from the classpath without needing modules. Rename them
+# the same way the official fat jar does, so jar does not validate as a module.
 foreach ($descriptor in @('module-info.class', 'META-INF\versions\9\module-info.class')) {
     $full = Join-Path $stageDir $descriptor
     if (Test-Path $full) {
         Move-Item $full ($full + '.disabled') -Force
-        Write-Host ("已禁用模块描述符: {0}" -f $descriptor)
+        Write-Host ("Disabled module descriptor: {0}" -f $descriptor)
     }
 }
 
-# 3. 打包 jar
-Write-Host '正在打包 jar...'
+# 3. Package the jar
+Write-Host 'Packaging jar...'
 if (Test-Path $jarPath) { Remove-Item $jarPath -Force }
-# 用 -C 指定内容根目录，并把 -C 放在所有选项之后，避免位置参数被误解析为待打包文件。
+# Pass -C after all options and point it at the content root, so positional
+# arguments are not misread as files to package.
 & $jarTool --create --file $jarPath --main-class shutterencoder.ui.main.Main -C $stageDir .
 if ($LASTEXITCODE -ne 0) {
-    Write-Host 'jar 打包失败。' -ForegroundColor Red
+    Write-Host 'Jar packaging failed.' -ForegroundColor Red
     exit $LASTEXITCODE
 }
 
-# 4. 准备 jpackage 输入目录：jar + 运行期资源
+# 4. Prepare the jpackage input directory: jar plus runtime resources
 $inputDir = Join-Path $workDir 'input'
 Reset-Directory $inputDir
 Copy-Item $jarPath $inputDir
@@ -172,8 +178,9 @@ foreach ($name in @('Languages', 'Library', 'LUTs')) {
     Copy-Item (Join-Path $repoRoot $name) (Join-Path $inputDir $name) -Recurse -Force
 }
 
-# 5. 生成应用镜像，启动器、cfg 与运行时布局与官方一致。
-# jpackage 在 Windows 只接受 ICO，这里用 .NET 把 logo.png 转成多尺寸 ICO。
+# 5. Generate the app image so launcher, cfg and runtime layout match the
+# official build. jpackage accepts only ICO on Windows, so convert logo.png
+# into a multi-size ICO with .NET.
 $iconPath = Join-Path $workDir 'app.ico'
 $logoPath = Join-Path $repoRoot 'logo.png'
 Add-Type -AssemblyName System.Drawing
@@ -218,9 +225,9 @@ $writer.Flush()
 [System.IO.File]::WriteAllBytes($iconPath, $icoStream.ToArray())
 $writer.Dispose()
 $icoStream.Dispose()
-Write-Host ("已生成图标: {0}" -f $iconPath)
+Write-Host ("Generated icon: {0}" -f $iconPath)
 
-Write-Host '正在生成应用镜像...'
+Write-Host 'Generating app image...'
 Reset-Directory $imageDir
 & $jpackage `
     --type app-image `
@@ -236,27 +243,28 @@ Reset-Directory $imageDir
     --add-modules java.base,java.datatransfer,java.xml,java.prefs,java.desktop,java.logging,java.security.sasl,jdk.crypto.ec `
     --dest $imageDir
 if ($LASTEXITCODE -ne 0) {
-    Write-Host '应用镜像生成失败。' -ForegroundColor Red
+    Write-Host 'App image generation failed.' -ForegroundColor Red
     exit $LASTEXITCODE
 }
 
 $appImage = Join-Path $imageDir 'Shutter Encoder'
 
-# 字体由运行时提供，程序按 FreeSans、Montserrat 等字体名查找
+# Fonts are served by the runtime; the application looks them up by family name
+# such as FreeSans and Montserrat.
 $runtimeFonts = Join-Path $appImage 'runtime\lib\fonts'
 New-Item -ItemType Directory -Path $runtimeFonts -Force | Out-Null
 Copy-Item (Join-Path $repoRoot 'fonts\*') $runtimeFonts -Force
 
 $appVersion = "20.5-noPrompt$(if ($revision) { "-$revision" } else { '' })"
-Write-Host ("应用版本: {0}" -f $appVersion)
+Write-Host ("Application version: {0}" -f $appVersion)
 
 if ($SkipInstaller) {
-    Write-Host ("已跳过安装包生成。应用镜像: {0}" -f $appImage) -ForegroundColor Green
+    Write-Host ("Installer skipped. App image: {0}" -f $appImage) -ForegroundColor Green
     exit 0
 }
 
-# 6. 调用 NSIS 生成安装包
-Write-Host '正在生成安装包...'
+# 6. Build the installer with NSIS
+Write-Host 'Building installer...'
 $nsisScript = Join-Path $repoRoot 'installer\ShutterEncoder.nsi'
 & $nsisExe `
     "/DAPP_VERSION=$appVersion" `
@@ -265,11 +273,11 @@ $nsisScript = Join-Path $repoRoot 'installer\ShutterEncoder.nsi'
     "/DREPO_ROOT=$repoRoot" `
     $nsisScript
 if ($LASTEXITCODE -ne 0) {
-    Write-Host '安装包生成失败。' -ForegroundColor Red
+    Write-Host 'Installer build failed.' -ForegroundColor Red
     exit $LASTEXITCODE
 }
 
-Write-Host ("构建完成，产物目录: {0}" -f $distDir) -ForegroundColor Green
+Write-Host ("Build complete. Output directory: {0}" -f $distDir) -ForegroundColor Green
 Get-ChildItem $distDir -Filter *.exe | ForEach-Object {
     Write-Host ("  {0}  {1:N1} MB" -f $_.Name, ($_.Length / 1MB))
 }

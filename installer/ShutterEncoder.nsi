@@ -1,6 +1,6 @@
-﻿; Shutter Encoder noPrompt 版安装脚本。
-; 由 build-noPrompt.ps1 调用，通过 /D 传入 APP_VERSION、APP_IMAGE、OUTPUT_DIR。
-; 安装布局与官方 jpackage 安装包一致：安装根目录下放 app 与 runtime 两个子目录。
+﻿; Installer script for the Shutter Encoder noPrompt build.
+; Invoked by build-noPrompt.ps1, which passes APP_VERSION, APP_IMAGE and OUTPUT_DIR via /D.
+; The layout matches the official jpackage installer: app and runtime live under the install root.
 
 Unicode true
 
@@ -14,13 +14,13 @@ Unicode true
 !define UNINST_KEY "Software\Microsoft\Windows\CurrentVersion\Uninstall\ShutterEncoderNoPrompt"
 
 !ifndef APP_VERSION
-  !error "APP_VERSION 未定义，请通过构建脚本传入。"
+  !error "APP_VERSION is not defined; pass it from the build script."
 !endif
 !ifndef APP_IMAGE
-  !error "APP_IMAGE 未定义，请通过构建脚本传入。"
+  !error "APP_IMAGE is not defined; pass it from the build script."
 !endif
 !ifndef OUTPUT_DIR
-  !error "OUTPUT_DIR 未定义，请通过构建脚本传入。"
+  !error "OUTPUT_DIR is not defined; pass it from the build script."
 !endif
 
 Name "${PRODUCT_NAME} ${APP_VERSION}"
@@ -36,7 +36,7 @@ VIProductVersion "20.5.0.0"
 VIAddVersionKey "ProductName" "${PRODUCT_NAME}"
 VIAddVersionKey "ProductVersion" "${APP_VERSION}"
 VIAddVersionKey "FileVersion" "${APP_VERSION}"
-VIAddVersionKey "FileDescription" "${PRODUCT_NAME} 安装程序"
+VIAddVersionKey "FileDescription" "${PRODUCT_NAME} setup"
 VIAddVersionKey "LegalCopyright" "GNU General Public License v2"
 
 !define MUI_ABORTWARNING
@@ -54,7 +54,7 @@ VIAddVersionKey "LegalCopyright" "GNU General Public License v2"
 !insertmacro MUI_LANGUAGE "English"
 !insertmacro MUI_LANGUAGE "SimpChinese"
 
-; 安装前结束正在运行的实例，否则文件被占用会导致覆盖失败。
+; Terminate a running instance first, otherwise locked files break the overwrite.
 Function .onInit
   SetRegView 64
   nsExec::Exec 'taskkill /F /IM "${PRODUCT_EXE}"'
@@ -67,10 +67,11 @@ Section "Install"
   SetOutPath "$INSTDIR"
   SetOverwrite on
 
-  ; 应用镜像已包含 app（jar、Languages、Library、LUTs）与 runtime 两棵子树。
+  ; The app image already contains the app subtree (jar, Languages, Library, LUTs)
+  ; and the runtime subtree.
   File /r "${APP_IMAGE}\*.*"
 
-  ; 卸载程序与注册表项
+  ; Uninstaller and registry entries
   WriteUninstaller "$INSTDIR\uninstall.exe"
 
   WriteRegStr HKLM "Software\${PRODUCT_NAME}" "InstallDir" "$INSTDIR"
@@ -84,18 +85,18 @@ Section "Install"
   WriteRegDWORD HKLM "${UNINST_KEY}" "NoModify" 1
   WriteRegDWORD HKLM "${UNINST_KEY}" "NoRepair" 1
 
-  ; 记录安装体积，供控制面板显示
+  ; Record the installed size for the Programs and Features column
   ${GetSize} "$INSTDIR" "/S=0K" $0 $1 $2
   IntFmt $0 "0x%08X" $0
   WriteRegDWORD HKLM "${UNINST_KEY}" "EstimatedSize" "$0"
 
-  ; 快捷方式
+  ; Shortcuts
   CreateDirectory "$SMPROGRAMS\${PRODUCT_NAME}"
   CreateShortCut "$SMPROGRAMS\${PRODUCT_NAME}\${PRODUCT_NAME}.lnk" "$INSTDIR\${PRODUCT_EXE}"
-  CreateShortCut "$SMPROGRAMS\${PRODUCT_NAME}\卸载 ${PRODUCT_NAME}.lnk" "$INSTDIR\uninstall.exe"
+  CreateShortCut "$SMPROGRAMS\${PRODUCT_NAME}\Uninstall ${PRODUCT_NAME}.lnk" "$INSTDIR\uninstall.exe"
   CreateShortCut "$DESKTOP\${PRODUCT_NAME}.lnk" "$INSTDIR\${PRODUCT_EXE}"
 
-  ; 关联文件类型，与官方安装包保持一致
+  ; File type association, matching the official installer
   WriteRegStr HKCR ".enc" "" "ShutterEncoder.Preset"
   WriteRegStr HKCR "ShutterEncoder.Preset" "" "Shutter Encoder preset"
   WriteRegStr HKCR "ShutterEncoder.Preset\DefaultIcon" "" "$INSTDIR\${PRODUCT_EXE},0"
@@ -108,7 +109,7 @@ Section "Uninstall"
   nsExec::Exec 'taskkill /F /IM "${PRODUCT_EXE}"'
 
   Delete "$SMPROGRAMS\${PRODUCT_NAME}\${PRODUCT_NAME}.lnk"
-  Delete "$SMPROGRAMS\${PRODUCT_NAME}\卸载 ${PRODUCT_NAME}.lnk"
+  Delete "$SMPROGRAMS\${PRODUCT_NAME}\Uninstall ${PRODUCT_NAME}.lnk"
   RMDir "$SMPROGRAMS\${PRODUCT_NAME}"
   Delete "$DESKTOP\${PRODUCT_NAME}.lnk"
 
@@ -118,5 +119,6 @@ Section "Uninstall"
 
   RMDir /r "$INSTDIR"
 
-  ; 用户配置目录保留，避免卸载时丢失预设与设置，需用户手动清理。
+  ; The user configuration directory is kept so presets and settings survive
+  ; an uninstall; removing it is left to the user.
 SectionEnd

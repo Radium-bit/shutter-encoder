@@ -109,23 +109,23 @@ public class Main {
 	 */
 	
 	/**
-	 * 上游官方版本号，仅表示兼容的 Shutter Encoder 基线版本。
-	 * 本项目构建产物在此基础上追加 noPrompt 后缀与构建提交号。
+	 * Upstream release version this build is compatible with.
+	 * The artifacts of this project append a noPrompt suffix and the build commit.
 	 */
 	public static final String baseVersion = "20.5";
 	
 	/**
-	 * 实际显示与对外报告的版本号。
-	 * 由 {@link #buildVersion(String, String)} 依据构建期提交号生成；
-	 * 未注入构建信息时退化为 {@code 20.5-noPrompt}。
+	 * Version reported in the UI and by {@code --version}.
+	 * Composed by {@link #buildVersion(String, String)} from the build commit;
+	 * falls back to {@code 20.5-noPrompt} when no build information is injected.
 	 */
 	public static final String actualVersion = buildVersion(baseVersion, readBuildRevision());
 	
 	/**
-	 * 读取构建期写入的提交号。
-	 * 构建脚本把提交号写入 jar 根路径的 build-revision.txt，
-	 * 源码直跑或未注入该文件时返回 null。
-	 * @return 完整 git 提交号；不可用时返回 null
+	 * Read the commit hash written at build time.
+	 * The build script writes it to build-revision.txt at the jar root;
+	 * returns null when running from source or when the file is absent.
+	 * @return the git commit hash, or null when unavailable
 	 */
 	private static String readBuildRevision() {
 		try (InputStream in = Main.class.getClassLoader().getResourceAsStream("build-revision.txt")) {
@@ -145,11 +145,12 @@ public class Main {
 	}
 	
 	/**
-	 * 组合对外版本号，形如 {@code 20.5-noPrompt-a1b2c3d}。
-	 * 保留上游基线版本前缀以便与官方发布做版本比较，后缀标识本分支构建。
-	 * @param base 上游基线版本号
-	 * @param revision 构建提交号；为 null 时省略后缀
-	 * @return 展示用版本号
+	 * Compose the reported version, shaped as {@code 20.5-noPrompt-a1b2c3d}.
+	 * The upstream base version is kept as a prefix so the result stays comparable
+	 * with official releases; the suffix identifies this branch's build.
+	 * @param base upstream base version
+	 * @param revision build commit hash; omitted from the result when null
+	 * @return version string for display
 	 */
 	private static String buildVersion(String base, String revision) {
 		String suffix = (revision == null || revision.isEmpty()) ? "" : "-" + revision;

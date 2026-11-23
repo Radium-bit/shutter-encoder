@@ -1,6 +1,9 @@
-# 运行时依赖与生成产物（不要提交）
+# Runtime dependencies and build artifacts (not tracked)
 /Library/*
 !/Library/colorize.py
 !/Library/sources.txt
 /LUTs/
 /build/
+
+# Local agent instruction file, machine-local only
+/AGENTS.md

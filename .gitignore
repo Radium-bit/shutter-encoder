@@ -1,0 +1,6 @@
+# 运行时依赖与生成产物（不要提交）
+/Library/*
+!/Library/colorize.py
+!/Library/sources.txt
+/LUTs/
+/build/

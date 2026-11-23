@@ -255,6 +255,11 @@ $runtimeFonts = Join-Path $appImage 'runtime\lib\fonts'
 New-Item -ItemType Directory -Path $runtimeFonts -Force | Out-Null
 Copy-Item (Join-Path $repoRoot 'fonts\*') $runtimeFonts -Force
 
+# GPL section 4 requires the license text to accompany binary distribution.
+# The upstream installer omits it, so ship it explicitly next to the app.
+Copy-Item (Join-Path $repoRoot 'LICENSE.txt') $appImage -Force
+Write-Host 'Included LICENSE.txt in the app image.'
+
 $appVersion = "20.5-noPrompt$(if ($revision) { "-$revision" } else { '' })"
 Write-Host ("Application version: {0}" -f $appVersion)
 

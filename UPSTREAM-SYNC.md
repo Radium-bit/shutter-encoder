@@ -34,7 +34,7 @@ If upstream adds a file with the same name, inspect its purpose before deciding 
 
 | File | Reason |
 | --- | --- |
-| `src/shutterencoder/ui/others/Donate.java` | QR donation popup, contains `MachineId` reading the motherboard serial |
+| `src/shutterencoder/ui/others/Donate.java` | QR donation popup shown once per day at exit, contains `MachineId` reading the motherboard serial |
 | `src/resources/qrcode.png` | Used only by the donation popup |
 | `src/shutterencoder/ui/main/ImageAdjustement.java` | Stale upstream copy with a typo, references nonexistent fields, breaks compilation |
 
